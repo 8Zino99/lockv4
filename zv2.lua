@@ -1,5 +1,6 @@
--- Silent Aimbot Script with Crosshair, Toggle GUI, Player ESP, and Auto Fire
--- Created by z-aq © 2024
+-- Silent Aimbot Script with Crosshair, Toggle GUI, Player ESP, Hitbox Enlargement, and Auto Fire
+-- Created by ChatGPT © 2024
+-- This script is for educational purposes.
 
 --// Cache
 local Players = game:GetService("Players")
@@ -81,13 +82,12 @@ local function AimAt(target)
 end
 
 local function AutoFireFunction()
-    if not aimlockTarget or not aimlockTarget.Character then return end
-
-    -- Auto fire logic here, for example:
-    -- local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-    -- if tool and tool:FindFirstChild("Fire") then
-    --     tool:Activate()
-    -- end
+    if aimlockTarget and aimlockTarget.Character and aimlockTarget.Character:FindFirstChild(Aimbot.LockPart) then
+        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        if tool and tool:FindFirstChild("Handle") then
+            tool:Activate()
+        end
+    end
 end
 
 --// GUI Creation Function
@@ -118,7 +118,7 @@ local function CreateGUI()
     ToggleButton.Parent = ScreenGui
     ToggleButton.Text = "Aimbot: OFF"
     ToggleButton.Position = UDim2.new(1, -120, 0, 20)
-    ToggleButton.Size = UDim2.new(0, 80, 0, 40) -- Smaller button
+    ToggleButton.Size = UDim2.new(0, 60, 0, 30) -- Smaller button
     ToggleButton.AnchorPoint = Vector2.new(1, 0)
     ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
     ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -141,8 +141,8 @@ local function CreateGUI()
     AutoFireButton.Name = "AutoFireButton"
     AutoFireButton.Parent = ScreenGui
     AutoFireButton.Text = "Auto Fire: OFF"
-    AutoFireButton.Position = UDim2.new(1, -120, 0, 70)
-    AutoFireButton.Size = UDim2.new(0, 80, 0, 40) -- Smaller button
+    AutoFireButton.Position = UDim2.new(1, -120, 0, 60)
+    AutoFireButton.Size = UDim2.new(0, 60, 0, 30) -- Smaller button
     AutoFireButton.AnchorPoint = Vector2.new(1, 0)
     AutoFireButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
     AutoFireButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -160,42 +160,35 @@ local function CreateGUI()
         end
     end)
 
-    -- Create Silent Size Changer GUI
     local SilentSizeChanger = Instance.new("Frame")
     SilentSizeChanger.Name = "SilentSizeChanger"
     SilentSizeChanger.Parent = ScreenGui
     SilentSizeChanger.Size = UDim2.new(0, 200, 0, 100)
-    SilentSizeChanger.Position = UDim2.new(0.5, -100, 0.1, 0)
-    SilentSizeChanger.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    SilentSizeChanger.Position = UDim2.new(0.5, -100, 0.5, -50)
+    SilentSizeChanger.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     SilentSizeChanger.Visible = false
 
     local SilentSizeInput = Instance.new("TextBox")
-    SilentSizeInput.Name = "SilentSizeInput"
     SilentSizeInput.Parent = SilentSizeChanger
-    SilentSizeInput.Text = tostring(Aimbot.FOVRadius)
-    SilentSizeInput.Size = UDim2.new(0, 180, 0, 40)
-    SilentSizeInput.Position = UDim2.new(0, 10, 0, 10)
-    SilentSizeInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    SilentSizeInput.Size = UDim2.new(0, 180, 0, 30)
+    SilentSizeInput.Position = UDim2.new(0.5, -90, 0.5, -45)
+    SilentSizeInput.PlaceholderText = "Enter new size"
+    SilentSizeInput.Text = ""
+    SilentSizeInput.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
     SilentSizeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SilentSizeInput.TextScaled = true
-    SilentSizeInput.TextWrapped = true
-    SilentSizeInput.PlaceholderText = tostring(Aimbot.FOVRadius)
 
     local SaveButton = Instance.new("TextButton")
-    SaveButton.Name = "SaveButton"
     SaveButton.Parent = SilentSizeChanger
+    SaveButton.Size = UDim2.new(0, 60, 0, 30)
+    SaveButton.Position = UDim2.new(0.5, -30, 0.5, 15)
     SaveButton.Text = "Save"
-    SaveButton.Size = UDim2.new(0, 80, 0, 40)
-    SaveButton.Position = UDim2.new(0, 10, 0, 60)
-    SaveButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    SaveButton.BackgroundColor3 = Color3.fromRGB(0, 0, 255)
     SaveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SaveButton.TextScaled = true
-    SaveButton.TextWrapped = true
 
     SaveButton.MouseButton1Click:Connect(function()
         local newSize = tonumber(SilentSizeInput.Text)
         if newSize then
-                        Aimbot.FOVRadius = newSize
+            Aimbot.FOVRadius = newSize
             Crosshair.Size = UDim2.new(0, newSize * 2, 0, newSize * 2)
             Crosshair.Position = UDim2.new(0.5, -newSize, 0.5, -newSize)
             SilentSizeChanger.Visible = false
@@ -207,7 +200,7 @@ local function CreateGUI()
     OpenSilentSizeChangerButton.Parent = ScreenGui
     OpenSilentSizeChangerButton.Text = "Change Silent Size"
     OpenSilentSizeChangerButton.Position = UDim2.new(0, 10, 0, 70)
-    OpenSilentSizeChangerButton.Size = UDim2.new(0, 150, 0, 40)
+        OpenSilentSizeChangerButton.Size = UDim2.new(0, 150, 0, 30) -- Smaller button
     OpenSilentSizeChangerButton.BackgroundColor3 = Color3.fromRGB(0, 0, 255)
     OpenSilentSizeChangerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     OpenSilentSizeChangerButton.TextScaled = true
@@ -232,7 +225,7 @@ local function CreateESP(player)
     if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
 
     local Box = Instance.new("BoxHandleAdornment")
-    Box.Size = player.Character:GetExtentsSize()
+    Box.Size = player.Character:GetExtentsSize() * 2 -- Enlarged hitbox
     Box.Adornee = player.Character.HumanoidRootPart
     Box.AlwaysOnTop = true
     Box.ZIndex = 10
