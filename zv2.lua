@@ -1,6 +1,6 @@
 -- Silent Aimbot Script with Crosshair, Toggle GUI, Player ESP, Hitbox Enlargement, and Auto Fire
--- Created by ChatGPT © 2024
--- This script is for educational purposes.
+-- Created by z-aq © 2024
+
 
 --// Cache
 local Players = game:GetService("Players")
