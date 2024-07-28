@@ -1,6 +1,6 @@
--- Silent Aimbot Script with Crosshair, Toggle GUI, Player ESP, and Hitbox Enlargement
--- Created by zin-aa © 2024
-
+-- Silent Aimbot Script with Crosshair, Toggle GUI, and Adjustable Hitbox
+-- Created by ChatGPT © 2024
+-- This script is for educational purposes.
 
 --// Cache
 local Players = game:GetService("Players")
@@ -76,34 +76,24 @@ local function AimAt(target)
     end
 end
 
--- Function to enlarge hitboxes of characters
 local function EnlargeHitbox(character)
-    for _, part in pairs(character:GetChildren()) do
-        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-            part.Size = part.Size * 1.5 -- Only slightly increase the size
-            part.Transparency = 0.5
+    local function ApplyHitbox(part)
+        if part:IsA("BasePart") then
+            part.Size = part.Size + Vector3.new(5, 5, 5) -- Adjust the size increase as needed
+            part.Transparency = 0.5 -- Optional: make hitbox slightly visible for debugging
         end
     end
-end
 
--- Function to create ESP
-local function CreateESP(player)
-    local Box = Instance.new("BoxHandleAdornment")
-    Box.Size = player.Character:GetExtentsSize()
-    Box.Adornee = player.Character.PrimaryPart
-    Box.AlwaysOnTop = true
-    Box.ZIndex = 10
-    Box.Color3 = Color3.fromRGB(0, 255, 255)
-    Box.Transparency = 0.5
-    Box.Parent = player.Character
+    for _, part in pairs(character:GetChildren()) do
+        ApplyHitbox(part)
+    end
 
-    player.CharacterAdded:Connect(function()
-        Box:Destroy()
-        CreateESP(player)
+    character.ChildAdded:Connect(function(part)
+        ApplyHitbox(part)
     end)
 end
 
--- GUI Creation Function
+--// GUI Creation Function
 local function CreateGUI()
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -150,90 +140,98 @@ local function CreateGUI()
         end
     end)
 
+    local SilentSizeButton = Instance.new("TextButton")
+    SilentSizeButton.Name = "SilentSizeButton"
+    SilentSizeButton.Parent = ScreenGui
+    SilentSizeButton.Text = "Silent Size"
+    SilentSizeButton.Position = UDim2.new(1, -120, 0, 70)
+    SilentSizeButton.Size = UDim2.new(0, 80, 0, 40) -- Smaller button
+    SilentSizeButton.AnchorPoint = Vector2.new(1, 0)
+    SilentSizeButton.BackgroundColor3 = Color3.fromRGB(0, 0, 255)
+    SilentSizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SilentSizeButton.TextScaled = true
+    SilentSizeButton.TextWrapped = true
+
+    SilentSizeButton.MouseButton1Click:Connect(function()
+        SilentSizeFrame.Visible = not SilentSizeFrame.Visible
+    end)
+
+    -- Silent Size Changer GUI
     local SilentSizeFrame = Instance.new("Frame")
     SilentSizeFrame.Name = "SilentSizeFrame"
     SilentSizeFrame.Parent = ScreenGui
-    SilentSizeFrame.Position = UDim2.new(0.5, -100, 0.5, -50)
     SilentSizeFrame.Size = UDim2.new(0, 200, 0, 100)
+    SilentSizeFrame.Position = UDim2.new(0.5, -100, 0.5, -50)
+    SilentSizeFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     SilentSizeFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     SilentSizeFrame.Visible = false
 
-    local SilentSizeBox = Instance.new("TextBox")
-    SilentSizeBox.Name = "SilentSizeBox"
-    SilentSizeBox.Parent = SilentSizeFrame
-    SilentSizeBox.Position = UDim2.new(0.1, 0, 0.2, 0)
-    SilentSizeBox.Size = UDim2.new(0.8, 0, 0.3, 0)
-    SilentSizeBox.Text = tostring(Aimbot.FOVRadius)
-    SilentSizeBox.TextScaled = true
-    SilentSizeBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    local SilentSizeTextBox = Instance.new("TextBox")
+    SilentSizeTextBox.Name = "SilentSizeTextBox"
+    SilentSizeTextBox.Parent = SilentSizeFrame
+    SilentSizeTextBox.Size = UDim2.new(0, 180, 0, 40)
+    SilentSizeTextBox.Position = UDim2.new(0.5, 0, 0.3, 0)
+    SilentSizeTextBox.AnchorPoint = Vector2.new(0.5, 0.5)
+    SilentSizeTextBox.PlaceholderText = "Enter FOV Size"
+    SilentSizeTextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    SilentSizeTextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+    SilentSizeTextBox.TextScaled = true
 
     local SaveButton = Instance.new("TextButton")
     SaveButton.Name = "SaveButton"
     SaveButton.Parent = SilentSizeFrame
-    SaveButton.Position = UDim2.new(0.1, 0, 0.6, 0)
-    SaveButton.Size = UDim2.new(0.8, 0, 0.3, 0)
     SaveButton.Text = "Save"
-    SaveButton.TextScaled = true
+    SaveButton.Size = UDim2.new(0, 80, 0, 30)
+    SaveButton.Position = UDim2.new(0.5, 0, 0.8, 0)
+    SaveButton.AnchorPoint = Vector2.new(0.5, 0.5)
     SaveButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    SaveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SaveButton.TextScaled = true
 
     SaveButton.MouseButton1Click:Connect(function()
-        local new = tonumber(SilentSizeBox.Text)
-        if new then
-            Aimbot.FOVRadius = new
-            Crosshair.Size = UDim2.new(0, new * 2, 0, new * 2)
-            Crosshair.Position = UDim2.new(0.5, -new, 0.5, -new)
+        local newSize = tonumber(SilentSizeTextBox.Text)
+        if newSize then
+            Aimbot.FOVRadius = newSize
+            Crosshair.Size = UDim2.new(0, newSize * 2, 0, newSize * 2)
+            SilentSizeFrame.Visible = false
         end
-        SilentSizeFrame.Visible = false
-    end)
-
-    local OpenSilentSizeButton = Instance.new("TextButton")
-    OpenSilentSizeButton.Name = "OpenSilentSizeButton"
-    OpenSilentSizeButton.Parent = ScreenGui
-    OpenSilentSizeButton.Text = "Silent Size"
-    OpenSilentSizeButton.Position = UDim2.new(1, -120, 0, 70)
-    OpenSilentSizeButton.Size = UDim2.new(0, 80, 0, 40) -- Smaller button
-    OpenSilentSizeButton.AnchorPoint = Vector2.new(1, 0)
-    OpenSilentSizeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    OpenSilentSizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    OpenSilentSizeButton.TextScaled = true
-    OpenSilentSizeButton.TextWrapped = true
-
-    OpenSilentSizeButton.MouseButton1Click:Connect(function()
-        SilentSizeFrame.Visible = not SilentSizeFrame.Visible
     end)
 
     -- Ensure GUI persists on respawn
     LocalPlayer.CharacterAdded:Connect(function()
-                wait(1)  -- Give a moment for the character to load
-        ScreenGui:Destroy()
+        wait(1)  -- Give a moment for the character to load
+                ScreenGui:Destroy()
         CreateGUI()
     end)
 end
 
 CreateGUI()
 
---// ESP and Hitbox Enlargement for Existing Players
+--// Aimbot Functionality
+RunService.RenderStepped:Connect(function()
+    if Aimbot.Enabled then
+        local target = GetClosestTarget()
+        if target and target.Character then
+            AimAt(target)
+        end
+    end
+end)
+
+-- Create hitboxes for existing players
 for _, player in pairs(Players:GetPlayers()) do
     if player ~= LocalPlayer and player.Character then
-        CreateESP(player)
         EnlargeHitbox(player.Character)
     end
 end
 
---// ESP and Hitbox Enlargement for New Players
+-- Create hitboxes for new players
 Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        CreateESP(player)
-        EnlargeHitbox(character)
+    player.CharacterAdded:Connect(function()
+        EnlargeHitbox(player.Character)
     end)
 end)
 
--- Aimbot functionality
-RunService.RenderStepped:Connect(function()
-    if Aimbot.Enabled then
-        local target = GetClosestTarget()
-        if target then
-            AimAt(target)
-        end
-    end
+-- Adjust the hitbox of characters upon respawn
+LocalPlayer.CharacterAdded:Connect(function(character)
+    EnlargeHitbox(character)
 end)
