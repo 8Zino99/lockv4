@@ -1,6 +1,4 @@
--- Silent Aimbot Script with Crosshair, Toggle GUI, and Adjustable Hitbox
--- Created by z-aq © 2024
-
+-- Created by z-aa © 2024
 
 --// Cache
 local Players = game:GetService("Players")
@@ -16,8 +14,8 @@ local Aimbot = {
     Enabled = false,
     FOVRadius = 100,
     LockPart = "Head",
-    LockedTarget = nil,
-    Smoothness = 0.1
+    Smoothness = 0.1,
+    HitboxScale = Vector3.new(5, 5, 5)
 }
 
 --// Utility Functions
@@ -66,7 +64,7 @@ end
 local function EnlargeHitbox(character)
     for _, part in pairs(character:GetChildren()) do
         if part:IsA("BasePart") then
-            part.Size = part.Size + Vector3.new(5, 5, 5) -- Increase hitbox size
+            part.Size = part.Size + Aimbot.HitboxScale -- Increase hitbox size
             part.Transparency = 0.5 -- Optional: Make the hitbox visible
         end
     end
@@ -174,8 +172,15 @@ local function CreateGUI()
 
     -- Ensure GUI persists on respawn
     LocalPlayer.CharacterAdded:Connect(function()
-        ScreenGui:Destroy()
+        if LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("ScreenGui") then
+            LocalPlayer.PlayerGui.ScreenGui:Destroy()
+        end
         CreateGUI()
+        
+        -- Enlarge hitbox on respawn
+        if LocalPlayer.Character then
+            EnlargeHitbox(LocalPlayer.Character)
+        end
     end)
 end
 
@@ -199,26 +204,6 @@ for _, player in pairs(Players:GetPlayers()) do
 end
 
 -- Enlarge hitboxes for new players
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        EnlargeHitbox(character)
-    end)
-end)
-
-LocalPlayer.CharacterAdded:Connect(function()
-    -- Destroy and recreate GUI on respawn
-    if LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("ScreenGui") then
-        LocalPlayer.PlayerGui.ScreenGui:Destroy()
-    end
-    CreateGUI()
-
-    -- Enlarge hitbox on respawn
-    if LocalPlayer.Character then
-        EnlargeHitbox(LocalPlayer.Character)
-    end
-end)
-
--- Function to enlarge hitbox for new players joining the game
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function(character)
         EnlargeHitbox(character)
