@@ -1,13 +1,15 @@
--- Created by z-aa © 2024
+--  Aimbot Script for Da Hood
+-- Created by z-aq © 2024
+
 
 --// Cache
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
 --// Aimbot Settings
 local Aimbot = {
@@ -15,7 +17,10 @@ local Aimbot = {
     FOVRadius = 100,
     LockPart = "Head",
     Smoothness = 0.1,
-    HitboxScale = Vector3.new(5, 5, 5)
+    HitboxScale = Vector3.new(5, 5, 5),
+    BulletDrop = true,  -- Toggle bullet drop simulation
+    BulletSpeed = 5000, -- Speed of the bullets
+    Gravity = 196.2,    -- Gravity for bullet drop calculation (similar to Roblox default)
 }
 
 --// Utility Functions
@@ -45,17 +50,27 @@ local function GetClosestTarget()
     return closestTarget
 end
 
+local function CalculateBulletDrop(startPos, endPos, distance)
+    if not Aimbot.BulletDrop then return end
+
+    local time = distance / Aimbot.BulletSpeed
+    local drop = 0.5 * Aimbot.Gravity * time^2
+    return endPos - Vector3.new(0, drop, 0)
+end
+
 local function AimAt(target)
     if not target or not target.Character then return end
 
-    local targetPosition = target.Character[Aimbot.LockPart].Position
-    local direction = (targetPosition - Camera.CFrame.Position).Unit
+    local targetPos = target.Character[Aimbot.LockPart].Position
+    local distance = (targetPos - Camera.CFrame.Position).Magnitude
+    local adjustedTargetPos = Aimbot.BulletDrop and CalculateBulletDrop(Camera.CFrame.Position, targetPos, distance) or targetPos
+    local direction = (adjustedTargetPos - Camera.CFrame.Position).Unit
     Camera.CFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction * 1000)
 
     -- Implement smooth aiming
     if Aimbot.Smoothness > 0 then
         local tweenInfo = TweenInfo.new(Aimbot.Smoothness, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-        local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
+        local targetCFrame = CFrame.new(Camera.CFrame.Position, adjustedTargetPos)
         local tween = TweenService:Create(Camera, tweenInfo, { CFrame = targetCFrame })
         tween:Play()
     end
@@ -170,42 +185,30 @@ local function CreateGUI()
         SilentSizeFrame.Visible = false
     end)
 
-    -- Ensure GUI persists on respawn
+       -- Ensure GUI persists on respawn
     LocalPlayer.CharacterAdded:Connect(function()
-        if LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("ScreenGui") then
-            LocalPlayer.PlayerGui.ScreenGui:Destroy()
-        end
-        CreateGUI()
-        
-        -- Enlarge hitbox on respawn
-        if LocalPlayer.Character then
-            EnlargeHitbox(LocalPlayer.Character)
+        if not ScreenGui.Parent then
+            ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
         end
     end)
 end
 
-CreateGUI()
-
--- Aimbot functionality
+--// Main Execution Loop
 RunService.RenderStepped:Connect(function()
     if Aimbot.Enabled then
         local target = GetClosestTarget()
-        if target and target.Character then
+        if target then
             AimAt(target)
         end
     end
 end)
 
--- Enlarge hitboxes for existing players
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer and player.Character then
-        EnlargeHitbox(player.Character)
-    end
-end
-
--- Enlarge hitboxes for new players
+--// Event Handlers for Player Character Updates
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function(character)
         EnlargeHitbox(character)
     end)
 end)
+
+-- Create GUI
+CreateGUI()
