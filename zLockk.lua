@@ -80,16 +80,21 @@ local function CreateGUI()
 
                     Toggle.Text = (ToggleValue and "✓ " or "✗ ") .. (toggleConfig.Name or "Toggle")
                 end
+
+                return Section
             end
+
+            return Tab
         end
 
-        return Library
+        return Window
     end
 
     return Library
 end
+
 -- Initialize
-local getgenv, game = getgenv, game
+local getgenv = getgenv
 if getgenv().Aimbot then return end
 getgenv().Aimbot = { Settings = {}, FOVSettings = {}, Functions = {} }
 
@@ -105,7 +110,7 @@ Aimbot.Settings = {
     Enabled = true,
     Toggle = false,
     LockPart = "Head",
-    TriggerKey = Enum.UserInputType.MouseButton2,
+    TriggerKey = Enum.UserInputType.MouseButton2,  -- MouseButton2 is not a valid KeyCode, it's UserInputType
     Sensitivity = 0.5,
     TeamCheck = false,
     WallCheck = true,
@@ -231,8 +236,9 @@ local function GetClosestPlayer()
             if Aimbot.Settings.WallCheck and #Camera:GetPartsObscuringTarget({player.Character[Aimbot.Settings.LockPart].Position}, player.Character:GetDescendants()) > 0 then continue end
 
             local screenPoint = Camera:WorldToViewportPoint(player.Character[Aimbot.Settings.LockPart].Position)
-            local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - UserInputService:GetMouseLocation()).Magnitude
-            if distance < closestDistance and distance < Aimbot.FOVSettings.Amount then
+            local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)).Magnitude
+
+            if distance < closestDistance then
                 closestPlayer = player
                 closestDistance = distance
             end
@@ -242,79 +248,146 @@ local function GetClosestPlayer()
 end
 
 local function AimAt(target)
-    if target and target.Character and target.Character:FindFirstChild(Aimbot.Settings.LockPart    ) then
-        local part = target.Character[Aimbot.Settings.LockPart]
-        local screenPos = Camera:WorldToViewportPoint(part.Position)
-        local mouseLocation = UserInputService:GetMouseLocation()
-        local moveX = (screenPos.X - mouseLocation.X) * Aimbot.Settings.Sensitivity
-        local moveY = (screenPos.Y - mouseLocation.Y) * Aimbot.Settings.Sensitivity
-        mousemoverel(moveX, moveY)
+    if not target or not target.Character or not target.Character:FindFirstChild(Aimbot.Settings.LockPart) then
+        return
     end
+
+    local targetPart = target.Character[Aimbot.Settings.LockPart]
+    local screenPoint = Camera:WorldToViewportPoint(targetPart.Position)
+    local mouseLocation = UserInputService:GetMouseLocation()
+
+    local delta = Vector2.new(screenPoint.X, screenPoint.Y) - mouseLocation
+    mousemoverel(delta.X * Aimbot.Settings.Sensitivity, delta.Y * Aimbot.Settings.Sensitivity)
 end
 
-RunService.RenderStepped:Connect(function()
-    if Aimbot.Settings.Enabled and (Aimbot.Settings.Toggle or UserInputService:IsMouseButtonPressed(Aimbot.Settings.TriggerKey)) then
-        local target = GetClosestPlayer()
-        if target then
-            AimAt(target)
-        end
-    end
-end)
-
--- FOV Circle
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = Aimbot.FOVSettings.Thickness
-FOVCircle.NumSides = Aimbot.FOVSettings.Sides
-FOVCircle.Radius = Aimbot.FOVSettings.Amount
-FOVCircle.Filled = Aimbot.FOVSettings.Filled
-FOVCircle.Transparency = Aimbot.FOVSettings.Transparency
-FOVCircle.Color = Aimbot.FOVSettings.Color
-FOVCircle.Visible = Aimbot.FOVSettings.Visible
-
-RunService.RenderStepped:Connect(function()
-    if Aimbot.Settings.Enabled then
-        local mousePos = UserInputService:GetMouseLocation()
-        FOVCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
-        FOVCircle.Visible = Aimbot.FOVSettings.Visible
-        FOVCircle.Radius = Aimbot.FOVSettings.Amount
-        FOVCircle.Color = Aimbot.FOVSettings.Color
-    else
-        FOVCircle.Visible = false
-    end
-end)
-
--- User Input Handling
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed then
-        if input.KeyCode == Aimbot.Settings.TriggerKey or input.UserInputType == Aimbot.Settings.TriggerKey then
-            if Aimbot.Settings.Toggle then
-                Aimbot.Settings.Enabled = not Aimbot.Settings.Enabled
-                if not Aimbot.Settings.Enabled then
-                    Aimbot.Locked = nil
-                    FOVCircle.Color = Aimbot.FOVSettings.Color -- Reset FOV color
-                end
-            else
-                Aimbot.Settings.Enabled = true
-            end
-        end
+local aiming = false
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Aimbot.Settings.TriggerKey then
+        aiming = true
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-    if input.KeyCode == Aimbot.Settings.TriggerKey or input.UserInputType == Aimbot.Settings.TriggerKey then
-        if not Aimbot.Settings.Toggle then
-            Aimbot.Settings.Enabled = false
-            Aimbot.Locked = nil
-            FOVCircle.Color = Aimbot.FOVSettings.Color -- Reset FOV color
-        end
+    if input.UserInputType == Aimbot.Settings.TriggerKey then
+        aiming = false
     end
 end)
 
--- Detect if the user is typing to prevent aimbot activation
-UserInputService.TextBoxFocused:Connect(function()
-    Aimbot.Typing = true
+RunService.RenderStepped:Connect(function()
+    if not Aimbot.Settings.Enabled then return end
+    if aiming then
+        local target = GetClosestPlayer()
+        AimAt(target)
+    end
 end)
 
-UserInputService.TextBoxFocusReleased:Connect(function()
-    Aimbot.Typing = false
+-- Draw FOV Circle
+local fovCircle = Drawing.new("Circle")
+fovCircle.Visible = Aimbot.FOVSettings.Visible
+fovCircle.Radius = Aimbot.FOVSettings.Amount
+fovCircle.Thickness = Aimbot.FOVSettings.Thickness
+fovCircle.Filled = Aimbot.FOVSettings.Filled
+fovCircle.Transparency = Aimbot.FOVSettings.Transparency
+fovCircle.Color = Aimbot.FOVSettings.Color
+
+RunService.RenderStepped:Connect(function()
+    if not Aimbot.FOVSettings.Enabled then
+        fovCircle.Visible = false
+        return
+    end
+
+    fovCircle.Visible = true
+    fovCircle.Position = UserInputService:GetMouseLocation()
 end)
+
+-- Initialize GUI
+local Library = CreateGUI()
+local MainFrame = Library:CreateWindow({ Name = "Custom Aimbot" })
+
+local SettingsTab = MainFrame:CreateTab({ Name = "Settings" })
+local Values = SettingsTab:CreateSection({ Name = "Values" })
+local Checks = SettingsTab:CreateSection({ Name = "Checks" })
+local ThirdPerson = SettingsTab:CreateSection({ Name = "Third Person" })
+
+-- Values Section
+Values:AddToggle({
+    Name = "Enabled",
+    Value = Aimbot.Settings.Enabled,
+    Callback = function(New)
+        Aimbot.Settings.Enabled = New
+    end
+})
+
+Values:AddToggle({
+    Name = "Toggle",
+    Value = Aimbot.Settings.Toggle,
+    Callback = function(New)
+        Aimbot.Settings.Toggle = New
+    end
+})
+
+Values:AddToggle({
+    Name = "Lock Part",
+    Value = Aimbot.Settings.LockPart,
+    Callback = function(New)
+        Aimbot.Settings.LockPart = New
+    end
+})
+
+Values:AddToggle({
+    Name = "Hotkey",
+    Value = Aimbot.Settings.TriggerKey,
+    Callback = function(New)
+        Aimbot.Settings.TriggerKey = New
+    end
+})
+
+Values:AddToggle({
+    Name = "Sensitivity",
+    Value = Aimbot.Settings.Sensitivity,
+    Callback = function(New)
+        Aimbot.Settings.Sensitivity = New
+    end
+})
+
+-- Checks Section
+Checks:AddToggle({
+    Name = "Team Check",
+    Value = Aimbot.Settings.TeamCheck,
+    Callback = function(New)
+        Aimbot.Settings.TeamCheck = New
+    end
+})
+
+Checks:AddToggle({
+    Name = "Wall Check",
+    Value = Aimbot.Settings.WallCheck,
+    Callback = function(New)
+        Aimbot.Settings.WallCheck = New
+    end
+})
+
+Checks:AddToggle({
+    Name = "Alive Check",
+    Value = Aimbot.Settings.AliveCheck,
+    Callback = function(New)
+        Aimbot.Settings.AliveCheck = New
+    end
+})
+
+-- Third Person Section
+ThirdPerson:AddToggle({
+    Name = "Enable Third Person",
+    Value = Aimbot.Settings.ThirdPerson,
+    Callback = function(New)
+        Aimbot.Settings.ThirdPerson = New
+    end
+})
+
+ThirdPerson:AddToggle({
+    Name = "Sensitivity",
+    Value = Aimbot.Settings.ThirdPersonSensitivity,
+    Callback = function(New)
+        Aimbot.Settings.ThirdPersonSensitivity = New
+    end
+})
