@@ -20,7 +20,8 @@ local Aimbot = {
     HitboxSizeMultiplier = 2,
     AimAssist = false,
     Prediction = true,
-    PredictStrength = 0.1
+    PredictStrength = 0.1,
+    TeleportShots = true
 }
 
 --// Utility Functions
@@ -75,6 +76,28 @@ local function AimAt(target)
         local tween = TweenService:Create(Camera, tweenInfo, { CFrame = targetCFrame })
         tween:Play()
     end
+end
+
+local function TeleportShot(target)
+    if not target or not target.Character then return end
+
+    local targetPosition = target.Character[Aimbot.LockPart].Position
+    if Aimbot.Prediction then
+        targetPosition = PredictTargetPosition(target)
+    end
+
+    local bullet = Instance.new("Part")
+    bullet.Size = Vector3.new(0.2, 0.2, 0.2)
+    bullet.Position = Camera.CFrame.Position
+    bullet.Anchored = true
+    bullet.CanCollide = false
+    bullet.BrickColor = BrickColor.new("Bright red")
+    bullet.Parent = workspace
+
+    bullet.Position = targetPosition
+    target.Character.Humanoid:TakeDamage(100)
+
+    game:GetService("Debris"):AddItem(bullet, 0.1)
 end
 
 local function UpdateHitboxSize(character)
@@ -204,7 +227,11 @@ RunService.RenderStepped:Connect(function()
     if Aimbot.Enabled then
         local target = GetClosestTarget()
         if target then
-            AimAt(target)
+            if Aimbot.TeleportShots then
+                TeleportShot(target)
+            else
+                AimAt(target)
+            end
         end
     end
 end)
