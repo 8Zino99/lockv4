@@ -1,5 +1,5 @@
--- made by z-aq
-
+-- Advanced Aimbot Script for Da Hood
+-- Created by z-aa
 
 --// Cache
 local Players = game:GetService("Players")
@@ -17,7 +17,10 @@ local Aimbot = {
     LockPart = "Head",
     LockedTarget = nil,
     Smoothness = 0.1,
-    HitboxSizeMultiplier = 2
+    HitboxSizeMultiplier = 2,
+    AimAssist = false,
+    Prediction = true,
+    PredictStrength = 0.1
 }
 
 --// Utility Functions
@@ -47,10 +50,21 @@ local function GetClosestTarget()
     return closestTarget
 end
 
+local function PredictTargetPosition(target)
+    if not target or not target.Character then return end
+    local velocity = target.Character.HumanoidRootPart.Velocity
+    local predictedPos = target.Character[Aimbot.LockPart].Position + (velocity * Aimbot.PredictStrength)
+    return predictedPos
+end
+
 local function AimAt(target)
     if not target or not target.Character then return end
 
     local targetPosition = target.Character[Aimbot.LockPart].Position
+    if Aimbot.Prediction then
+        targetPosition = PredictTargetPosition(target)
+    end
+
     local direction = (targetPosition - Camera.CFrame.Position).Unit
     Camera.CFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction * 1000)
 
@@ -69,6 +83,8 @@ local function UpdateHitboxSize(character)
     for _, part in pairs(character:GetChildren()) do
         if part:IsA("BasePart") then
             part.Size = part.Size * Aimbot.HitboxSizeMultiplier
+            part.Transparency = 0.5
+            part.Material = Enum.Material.ForceField
         end
     end
 end
@@ -191,4 +207,11 @@ RunService.RenderStepped:Connect(function()
             AimAt(target)
         end
     end
+end)
+
+-- Ensure GUI persists on respawn
+LocalPlayer.CharacterAdded:Connect(function(character)
+    wait(1)
+    CreateGUI()
+    UpdateHitboxSize(character)
 end)
