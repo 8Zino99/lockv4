@@ -1,30 +1,27 @@
--- Advanced Aimbot Script for Da Hood
 -- Created by z-aa
 
---// Cache
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local TweenService = game:GetService("TweenService")
 
+-- Local Player
 local LocalPlayer = Players.LocalPlayer
 
---// Aimbot Settings
+-- Aimbot Settings
 local Aimbot = {
     Enabled = false,
     FOVRadius = 100,
     LockPart = "Head",
     LockedTarget = nil,
     Smoothness = 0.1,
-    HitboxSizeMultiplier = 2,
-    AimAssist = false,
-    Prediction = true,
-    PredictStrength = 0.1,
-    TeleportShots = true
+    TeleportShots = true, -- Enable teleport shots for precision
+    HitboxSize = 10, -- Size of the hitbox to increase accuracy
 }
 
---// Utility Functions
+-- Utility Functions
 local function GetDistanceFromCursor(pos)
     local centerPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     return (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
@@ -52,67 +49,55 @@ local function GetClosestTarget()
 end
 
 local function PredictTargetPosition(target)
-    if not target or not target.Character then return end
-    local velocity = target.Character.HumanoidRootPart.Velocity
-    local predictedPos = target.Character[Aimbot.LockPart].Position + (velocity * Aimbot.PredictStrength)
-    return predictedPos
+    local targetPos = target.Character[Aimbot.LockPart].Position
+    local velocity = target.Character:FindFirstChild("HumanoidRootPart").Velocity
+    local predictedPosition = targetPos + (velocity * 0.5) -- Adjust factor as needed
+    return predictedPosition
 end
 
 local function AimAt(target)
     if not target or not target.Character then return end
 
-    local targetPosition = target.Character[Aimbot.LockPart].Position
-    if Aimbot.Prediction then
-        targetPosition = PredictTargetPosition(target)
-    end
-
+    local targetPosition = PredictTargetPosition(target)
     local direction = (targetPosition - Camera.CFrame.Position).Unit
-    Camera.CFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction * 1000)
+    local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
 
     -- Implement smooth aiming
     if Aimbot.Smoothness > 0 then
         local tweenInfo = TweenInfo.new(Aimbot.Smoothness, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-        local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
         local tween = TweenService:Create(Camera, tweenInfo, { CFrame = targetCFrame })
         tween:Play()
+    else
+        Camera.CFrame = targetCFrame
     end
 end
 
 local function TeleportShot(target)
     if not target or not target.Character then return end
 
-    local targetPosition = target.Character[Aimbot.LockPart].Position
-    if Aimbot.Prediction then
-        targetPosition = PredictTargetPosition(target)
+    local targetPosition = PredictTargetPosition(target)
+    local ray = Ray.new(Camera.CFrame.Position, (targetPosition - Camera.CFrame.Position).Unit * 1000)
+
+    local part, position = workspace:FindPartOnRay(ray, LocalPlayer.Character)
+    if part and part.Parent == target.Character then
+        -- Simulate hit by moving camera to target
+        local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
+        Camera.CFrame = targetCFrame
     end
-
-    local bullet = Instance.new("Part")
-    bullet.Size = Vector3.new(0.2, 0.2, 0.2)
-    bullet.Position = Camera.CFrame.Position
-    bullet.Anchored = true
-    bullet.CanCollide = false
-    bullet.BrickColor = BrickColor.new("Bright red")
-    bullet.Parent = workspace
-
-    bullet.Position = targetPosition
-    target.Character.Humanoid:TakeDamage(100)
-
-    game:GetService("Debris"):AddItem(bullet, 0.1)
 end
 
 local function UpdateHitboxSize(character)
-    if not character or not character:FindFirstChild(Aimbot.LockPart) then return end
-
-    for _, part in pairs(character:GetChildren()) do
-        if part:IsA("BasePart") then
-            part.Size = part.Size * Aimbot.HitboxSizeMultiplier
-            part.Transparency = 0.5
-            part.Material = Enum.Material.ForceField
-        end
+    if character and character:FindFirstChild(Aimbot.LockPart) then
+        local hitbox = character:FindFirstChild("Hitbox") or Instance.new("Part")
+        hitbox.Size = Vector3.new(Aimbot.HitboxSize, Aimbot.HitboxSize, Aimbot.HitboxSize)
+        hitbox.Transparency = 1
+        hitbox.CanCollide = false
+        hitbox.Anchored = true
+        hitbox.Parent = character
     end
 end
 
---// GUI Creation Function
+-- GUI Creation Function
 local function CreateGUI()
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -140,7 +125,7 @@ local function CreateGUI()
     ToggleButton.Parent = ScreenGui
     ToggleButton.Text = "Aimbot: OFF"
     ToggleButton.Position = UDim2.new(1, -120, 0, 20)
-    ToggleButton.Size = UDim2.new(0, 80, 0, 40) -- Smaller button
+    ToggleButton.Size = UDim2.new(0, 80, 0, 40)
     ToggleButton.AnchorPoint = Vector2.new(1, 0)
     ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
     ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -161,9 +146,9 @@ local function CreateGUI()
     local SilentSizeButton = Instance.new("TextButton")
     SilentSizeButton.Name = "SilentSizeButton"
     SilentSizeButton.Parent = ScreenGui
-    SilentSizeButton.Text = "Change Silent Size"
+    SilentSizeButton.Text = "Silent Size"
     SilentSizeButton.Position = UDim2.new(1, -120, 0, 70)
-    SilentSizeButton.Size = UDim2.new(0, 80, 0, 40) -- Smaller button
+    SilentSizeButton.Size = UDim2.new(0, 80, 0, 40)
     SilentSizeButton.AnchorPoint = Vector2.new(1, 0)
     SilentSizeButton.BackgroundColor3 = Color3.fromRGB(0, 0, 255)
     SilentSizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -171,70 +156,37 @@ local function CreateGUI()
     SilentSizeButton.TextWrapped = true
 
     SilentSizeButton.MouseButton1Click:Connect(function()
-        local inputBox = Instance.new("TextBox")
-        inputBox.Size = UDim2.new(0, 200, 0, 50)
-        inputBox.Position = UDim2.new(0.5, -100, 0.5, -25)
-        inputBox.AnchorPoint = Vector2.new(0.5, 0.5)
-        inputBox.Text = tostring(Aimbot.FOVRadius)
-        inputBox.Parent = ScreenGui
+        local input = Instance.new("TextBox")
+        input.Size = UDim2.new(0, 200, 0, 50)
+        input.Position = UDim2.new(0.5, -100, 0.5, -25)
+        input.PlaceholderText = "Enter new size"
+        input.Parent = ScreenGui
 
         local saveButton = Instance.new("TextButton")
-        saveButton.Text = "Save"
         saveButton.Size = UDim2.new(0, 100, 0, 50)
-        saveButton.Position = UDim2.new(0.5, -50, 0.6, 0)
-        saveButton.AnchorPoint = Vector2.new(0.5, 0)
-        saveButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        saveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        saveButton.Position = UDim2.new(0.5, -50, 0.5, 30)
+        saveButton.Text = "Save"
         saveButton.Parent = ScreenGui
 
         saveButton.MouseButton1Click:Connect(function()
-            local new = tonumber(inputBox.Text)
-            if new then
-                Aimbot.FOVRadius = new
-                Crosshair.Size = UDim2.new(0, new * 2, 0, new * 2)
-                Crosshair.Position = UDim2.new(0.5, -new, 0.5, -new)
+            local newSize = tonumber(input.Text)
+            if newSize then
+                Aimbot.FOVRadius = newSize
+                Crosshair.Size = UDim2.new(0, Aimbot.FOVRadius * 2, 0, Aimbot.FOVRadius * 2)
             end
-            inputBox:Destroy()
+            input:Destroy()
             saveButton:Destroy()
         end)
     end)
 
-    -- Ensure GUI persists on respawn
     LocalPlayer.CharacterAdded:Connect(function(character)
+        wait(1)
         CreateGUI()
         UpdateHitboxSize(character)
     end)
 end
 
 CreateGUI()
-
--- Ensure hitbox size for all current players
-for _, player in ipairs(Players:GetPlayers()) do
-    if player.Character then
-        UpdateHitboxSize(player.Character)
-    end
-end
-
--- Update hitbox size for new players
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        UpdateHitboxSize(character)
-    end)
-end)
-
--- Aimbot functionality
-RunService.RenderStepped:Connect(function()
-    if Aimbot.Enabled then
-        local target = GetClosestTarget()
-        if target then
-            if Aimbot.TeleportShots then
-                TeleportShot(target)
-            else
-                AimAt(target)
-            end
-        end
-    end
-end)
 
 -- Ensure GUI persists on respawn
 LocalPlayer.CharacterAdded:Connect(function(character)
