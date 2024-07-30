@@ -47,7 +47,7 @@ local function CreateGUI()
                 Tab.Visible = true
             end)
 
-            function Tab:CreateSection(sectionConfig)
+            function Library:CreateSection(sectionConfig)
                 local Section = Instance.new("Frame")
                 Section.Size = UDim2.new(1, 0, 1, 0)
                 Section.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -60,7 +60,7 @@ local function CreateGUI()
                 Title.Text = sectionConfig.Name or "Section"
                 Title.Parent = Section
 
-                function Section:AddToggle(toggleConfig)
+                function Library:AddToggle(toggleConfig)
                     local Toggle = Instance.new("TextButton")
                     Toggle.Size = UDim2.new(1, 0, 0.1, 0)
                     Toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -81,11 +81,11 @@ local function CreateGUI()
                     Toggle.Text = (ToggleValue and "✓ " or "✗ ") .. (toggleConfig.Name or "Toggle")
                 end
             end
-            
-            return Tab
+
+            return Library
         end
 
-        return Window
+        return Library
     end
 
     return Library
@@ -108,7 +108,7 @@ Aimbot.Settings = {
     Enabled = true,
     Toggle = false,
     LockPart = "Head",
-    TriggerKey = Enum.KeyCode.MouseButton2,
+    TriggerKey = Enum.UserInputType.Touch,
     Sensitivity = 0.5,
     TeamCheck = false,
     WallCheck = true,
@@ -234,9 +234,9 @@ local function GetClosestPlayer()
             if Aimbot.Settings.WallCheck and #Camera:GetPartsObscuringTarget({player.Character[Aimbot.Settings.LockPart].Position}, player.Character:GetDescendants()) > 0 then continue end
 
             local screenPoint = Camera:WorldToViewportPoint(player.Character[Aimbot.Settings.LockPart].Position)
-            local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - UserInputService:GetMouseLocation()).magnitude
+            local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - UserInputService:GetMouseLocation()).Magnitude
 
-            if distance < closestDistance and distance < Aimbot.FOVSettings.Amount then
+            if distance < closestDistance and distance <= Aimbot.FOVSettings.Amount then
                 closestPlayer = player
                 closestDistance = distance
             end
@@ -251,70 +251,60 @@ local function AimAt(target)
     end
 
     local part = target.Character[Aimbot.Settings.LockPart]
-    local partPos = part.Position
-    local cameraPos = Camera.CFrame.Position
+        local partPos = part.Position
+    local screenPos = Camera:WorldToViewportPoint(partPos)
 
-    local aimPos = partPos + (part.Velocity * (cameraPos - partPos).Magnitude / Aimbot.Settings.Sensitivity)
-    
-    Camera.CFrame = CFrame.new(cameraPos, aimPos)
+    local aimPos = Vector2.new(screenPos.X, screenPos.Y)
+    local mousePos = UserInputService:GetMouseLocation()
+
+    local smoothFactor = Aimbot.Settings.Sensitivity
+    local newMousePos = mousePos:Lerp(aimPos, smoothFactor)
+
+    UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+    mousemoverel(newMousePos.X - mousePos.X, newMousePos.Y - mousePos.Y)
 end
 
-local function onUpdate()
-    if Aimbot.Running and not Aimbot.Typing then
-        local target = GetClosestPlayer()
-        if target then
-            AimAt(target)
-        end
-    end
-end
-
-RunService.RenderStepped:Connect(onUpdate)
-
--- Adding support for mobile devices
-UserInputService.TouchTap:Connect(function(touchPositions, gameProcessedEvent)
-    if not gameProcessedEvent then
-        if #touchPositions == 1 then
-            Aimbot.Running = not Aimbot.Running
-            if not Aimbot.Running then
-                Aimbot.Locked = nil
-                Aimbot.FOVCircle.Color = Color3.fromRGB(255, 255, 255) -- Reset FOV color
+-- Main Aimbot Loop
+RunService.RenderStepped:Connect(function()
+    if Aimbot.Settings.Enabled and not Aimbot.Typing then
+        if Aimbot.Running then
+            local closestPlayer = GetClosestPlayer()
+            if closestPlayer then
+                AimAt(closestPlayer)
             end
         end
     end
 end)
 
--- GUI Setup for FOV
-local function CreateFOVCircle()
-    local circle = Drawing.new("Circle")
-    circle.Visible = Aimbot.FOVSettings.Visible
-    circle.Color = Aimbot.FOVSettings.Color
-    circle.Thickness = Aimbot.FOVSettings.Thickness
-    circle.NumSides = Aimbot.FOVSettings.Sides
-    circle.Radius = Aimbot.FOVSettings.Amount
-    circle.Transparency = Aimbot.FOVSettings.Transparency
-    circle.Filled = Aimbot.FOVSettings.Filled
-    return circle
-end
-
-Aimbot.FOVCircle = CreateFOVCircle()
-
-RunService.RenderStepped:Connect(function()
-    if Aimbot.FOVSettings.Enabled then
-        Aimbot.FOVCircle.Visible = true
-        Aimbot.FOVCircle.Position = UserInputService:GetMouseLocation()
-        if Aimbot.Locked then
-            Aimbot.FOVCircle.Color = Aimbot.FOVSettings.LockedColor
-        else
-            Aimbot.FOVCircle.Color = Aimbot.FOVSettings.Color
+-- User Input Handling
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.UserInputType == Aimbot.Settings.TriggerKey then
+            if Aimbot.Settings.Toggle then
+                Aimbot.Running = not Aimbot.Running
+                if not Aimbot.Running then
+                    Aimbot.Locked = nil
+                end
+            else
+                Aimbot.Running = true
+            end
         end
-    else
-        Aimbot.FOVCircle.Visible = false
     end
 end)
 
--- Reset GUI on respawn
-LocalPlayer.CharacterAdded:Connect(function()
-    UI.Enabled = false
-    wait(5) -- adjust as needed
-    UI.Enabled = true
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Aimbot.Settings.TriggerKey then
+        if not Aimbot.Settings.Toggle then
+            Aimbot.Running = false
+            Aimbot.Locked = nil
+        end
+    end
+end)
+
+UserInputService.TextBoxFocused:Connect(function()
+    Aimbot.Typing = true
+end)
+
+UserInputService.TextBoxFocusReleased:Connect(function()
+    Aimbot.Typing = false
 end)
