@@ -16,8 +16,9 @@ local Aimbot = {
     FOVRadius = 100,
     LockPart = "Head",
     LockedTarget = nil,
-    Smoothness = 0.1,
-    HitboxSize = 10, -- Size of the hitbox to increase accuracy
+    Smoothness = 0.01, -- Reduced smoothness for more immediate aiming
+    HitboxSize = 10,
+    AutoFire = false
 }
 
 -- Utility Functions
@@ -62,14 +63,8 @@ local function AimAt(target)
     local direction = (targetPosition - Camera.CFrame.Position).Unit
     local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
 
-    -- Implement smooth aiming
-    if Aimbot.Smoothness > 0 then
-        local tweenInfo = TweenInfo.new(Aimbot.Smoothness, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-        local tween = TweenService:Create(Camera, tweenInfo, { CFrame = targetCFrame })
-        tween:Play()
-    else
-        Camera.CFrame = targetCFrame
-    end
+    -- Directly set CFrame for immediate aiming
+    Camera.CFrame = targetCFrame
 end
 
 local function UpdateHitboxSize(character)
@@ -180,6 +175,10 @@ RunService.RenderStepped:Connect(function()
         local target = GetClosestTargetInSilentZone()
         if target then
             AimAt(target)
+            if Aimbot.AutoFire then
+                -- Implement AutoFire logic if necessary
+                -- Example: fire at target
+            end
         end
     end
 end)
