@@ -47,7 +47,7 @@ local function CreateGUI()
                 Tab.Visible = true
             end)
 
-            function Library:CreateSection(sectionConfig)
+            function Tab:CreateSection(sectionConfig)
                 local Section = Instance.new("Frame")
                 Section.Size = UDim2.new(1, 0, 1, 0)
                 Section.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -60,7 +60,7 @@ local function CreateGUI()
                 Title.Text = sectionConfig.Name or "Section"
                 Title.Parent = Section
 
-                function Library:AddToggle(toggleConfig)
+                function Section:AddToggle(toggleConfig)
                     local Toggle = Instance.new("TextButton")
                     Toggle.Size = UDim2.new(1, 0, 0.1, 0)
                     Toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -81,13 +81,16 @@ local function CreateGUI()
                     Toggle.Text = (ToggleValue and "✓ " or "✗ ") .. (toggleConfig.Name or "Toggle")
                 end
             end
+            
+            return Tab
         end
 
-        return Library
+        return Window
     end
 
     return Library
 end
+
 -- Initialize
 local getgenv, game = getgenv, game
 if getgenv().Aimbot then return end
@@ -105,7 +108,7 @@ Aimbot.Settings = {
     Enabled = true,
     Toggle = false,
     LockPart = "Head",
-    TriggerKey = Enum.KeyCode.E, -- You can set this to any key you want
+    TriggerKey = Enum.KeyCode.MouseButton2,
     Sensitivity = 0.5,
     TeamCheck = false,
     WallCheck = true,
@@ -147,13 +150,11 @@ Values:AddToggle({
     end
 })
 
-Values:AddSlider({
-    Name = "Sensitivity",
-    Value = Aimbot.Settings.Sensitivity,
-    Min = 0.1,
-    Max = 10,
+Values:AddToggle({
+    Name = "Toggle",
+    Value = Aimbot.Settings.Toggle,
     Callback = function(New)
-        Aimbot.Settings.Sensitivity = New
+        Aimbot.Settings.Toggle = New
     end
 })
 
@@ -166,10 +167,18 @@ Values:AddToggle({
 })
 
 Values:AddToggle({
-    Name = "Trigger Key",
-    Value = Aimbot.Settings.TriggerKey.Name,
+    Name = "Hotkey",
+    Value = Aimbot.Settings.TriggerKey,
     Callback = function(New)
-        Aimbot.Settings.TriggerKey = Enum.KeyCode[New]
+        Aimbot.Settings.TriggerKey = New
+    end
+})
+
+Values:AddToggle({
+    Name = "Sensitivity",
+    Value = Aimbot.Settings.Sensitivity,
+    Callback = function(New)
+        Aimbot.Settings.Sensitivity = New
     end
 })
 
@@ -207,11 +216,9 @@ ThirdPerson:AddToggle({
     end
 })
 
-ThirdPerson:AddSlider({
-    Name = "Third Person Sensitivity",
+ThirdPerson:AddToggle({
+    Name = "Sensitivity",
     Value = Aimbot.Settings.ThirdPersonSensitivity,
-    Min = 0.1,
-    Max = 10,
     Callback = function(New)
         Aimbot.Settings.ThirdPersonSensitivity = New
     end
@@ -227,116 +234,87 @@ local function GetClosestPlayer()
             if Aimbot.Settings.WallCheck and #Camera:GetPartsObscuringTarget({player.Character[Aimbot.Settings.LockPart].Position}, player.Character:GetDescendants()) > 0 then continue end
 
             local screenPoint = Camera:WorldToViewportPoint(player.Character[Aimbot.Settings.LockPart].Position)
-            local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - UserInputService:GetMouseLocation()).Magnitude
+            local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - UserInputService:GetMouseLocation()).magnitude
+
             if distance < closestDistance and distance < Aimbot.FOVSettings.Amount then
-                closestDistance = distance
                 closestPlayer = player
+                closestDistance = distance
             end
         end
     end
     return closestPlayer
 end
+
 local function AimAt(target)
-    local aimPart = target.Character[Aimbot.Settings.LockPart]
-    if aimPart then
-        local targetPosition = aimPart.Position
-        local direction = (targetPosition - Camera.CFrame.Position).unit
-        local newCFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction)
-        Camera.CFrame = newCFrame:Lerp(newCFrame, Aimbot.Settings.Sensitivity)
+    if not target or not target.Character or not target.Character:FindFirstChild(Aimbot.Settings.LockPart) then
+        return
+    end
+
+    local part = target.Character[Aimbot.Settings.LockPart]
+    local partPos = part.Position
+    local cameraPos = Camera.CFrame.Position
+
+    local aimPos = partPos + (part.Velocity * (cameraPos - partPos).Magnitude / Aimbot.Settings.Sensitivity)
+    
+    Camera.CFrame = CFrame.new(cameraPos, aimPos)
+end
+
+local function onUpdate()
+    if Aimbot.Running and not Aimbot.Typing then
+        local target = GetClosestPlayer()
+        if target then
+            AimAt(target)
+        end
     end
 end
 
-local AimbotConnection
+RunService.RenderStepped:Connect(onUpdate)
 
-RunService.RenderStepped:Connect(function()
-    if Aimbot.Settings.Enabled and Aimbot.Running then
-        local closestPlayer = GetClosestPlayer()
-        if closestPlayer then
-            AimAt(closestPlayer)
-        end
-    end
-end)
-
--- Handling input for toggling the aimbot
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Aimbot.Settings.TriggerKey or input.UserInputType == Enum.UserInputType.Touch then
-        if Aimbot.Settings.Toggle then
+-- Adding support for mobile devices
+UserInputService.TouchTap:Connect(function(touchPositions, gameProcessedEvent)
+    if not gameProcessedEvent then
+        if #touchPositions == 1 then
             Aimbot.Running = not Aimbot.Running
             if not Aimbot.Running then
                 Aimbot.Locked = nil
                 Aimbot.FOVCircle.Color = Color3.fromRGB(255, 255, 255) -- Reset FOV color
             end
-        else
-            Aimbot.Running = true
         end
     end
 end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.KeyCode == Aimbot.Settings.TriggerKey or input.UserInputType == Enum.UserInputType.Touch then
-        if not Aimbot.Settings.Toggle then
-            Aimbot.Running = false
-            Aimbot.Locked = nil
-            Aimbot.FOVCircle.Color = Color3.fromRGB(255, 255, 255) -- Reset FOV color
-        end
-    end
-end)
-
--- Detect if the user is typing to prevent aimbot activation
-UserInputService.TextBoxFocused:Connect(function()
-    Aimbot.Typing = true
-end)
-
-UserInputService.TextBoxFocusReleased:Connect(function()
-    Aimbot.Typing = false
-end)
-
--- FOV Circle
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = Aimbot.FOVSettings.Visible
-FOVCircle.Radius = Aimbot.FOVSettings.Amount
-FOVCircle.Thickness = Aimbot.FOVSettings.Thickness
-FOVCircle.Transparency = Aimbot.FOVSettings.Transparency
-FOVCircle.Color = Aimbot.FOVSettings.Color
-FOVCircle.Filled = Aimbot.FOVSettings.Filled
-FOVCircle.NumSides = Aimbot.FOVSettings.Sides
-
-RunService.RenderStepped:Connect(function()
-    if Aimbot.Settings.Enabled then
-        local mouseLocation = UserInputService:GetMouseLocation()
-        FOVCircle.Position = Vector2.new(mouseLocation.X, mouseLocation.Y + 36)
-    else
-        FOVCircle.Visible = false
-    end
-end)
-
--- Adding smoothness to aimbot
-local function SmoothAim(target)
-    local aimPart = target.Character[Aimbot.Settings.LockPart]
-    if aimPart then
-        local targetPosition = aimPart.Position
-        local direction = (targetPosition - Camera.CFrame.Position).unit
-        local newCFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction)
-        Camera.CFrame = Camera.CFrame:Lerp(newCFrame, Aimbot.Settings.Sensitivity)
-    end
+-- GUI Setup for FOV
+local function CreateFOVCircle()
+    local circle = Drawing.new("Circle")
+    circle.Visible = Aimbot.FOVSettings.Visible
+    circle.Color = Aimbot.FOVSettings.Color
+    circle.Thickness = Aimbot.FOVSettings.Thickness
+    circle.NumSides = Aimbot.FOVSettings.Sides
+    circle.Radius = Aimbot.FOVSettings.Amount
+    circle.Transparency = Aimbot.FOVSettings.Transparency
+    circle.Filled = Aimbot.FOVSettings.Filled
+    return circle
 end
 
+Aimbot.FOVCircle = CreateFOVCircle()
+
 RunService.RenderStepped:Connect(function()
-    if Aimbot.Settings.Enabled and Aimbot.Running and not Aimbot.Typing then
-        local closestPlayer = GetClosestPlayer()
-        if closestPlayer then
-            SmoothAim(closestPlayer)
+    if Aimbot.FOVSettings.Enabled then
+        Aimbot.FOVCircle.Visible = true
+        Aimbot.FOVCircle.Position = UserInputService:GetMouseLocation()
+        if Aimbot.Locked then
+            Aimbot.FOVCircle.Color = Aimbot.FOVSettings.LockedColor
+        else
+            Aimbot.FOVCircle.Color = Aimbot.FOVSettings.Color
         end
+    else
+        Aimbot.FOVCircle.Visible = false
     end
 end)
 
--- Ensure GUI is visible on respawn
+-- Reset GUI on respawn
 LocalPlayer.CharacterAdded:Connect(function()
-    MainFrame.Visible = true
+    UI.Enabled = false
+    wait(5) -- adjust as needed
+    UI.Enabled = true
 end)
-
-LocalPlayer.CharacterRemoving:Connect(function()
-    MainFrame.Visible = false
-end)
-
