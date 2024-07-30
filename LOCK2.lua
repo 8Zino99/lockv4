@@ -1,9 +1,10 @@
--- made by Z-aq
+-- Created by Z-aq
+
 local function CreateGUI()
     local Library = {}
     local UI = Instance.new("ScreenGui", game.CoreGui)
     UI.Name = "CustomAimbotUI"
-    
+
     function Library:CreateWindow(config)
         local Window = Instance.new("Frame")
         Window.Size = UDim2.new(0.3, 0, 0.5, 0)
@@ -11,14 +12,14 @@ local function CreateGUI()
         Window.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         Window.BorderSizePixel = 0
         Window.Parent = UI
-        
+
         local Title = Instance.new("TextLabel")
         Title.Size = UDim2.new(1, 0, 0.1, 0)
         Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
         Title.TextColor3 = Color3.fromRGB(255, 255, 255)
         Title.Text = config.Name or "Window"
         Title.Parent = Window
-        
+
         local Tabs = Instance.new("Frame")
         Tabs.Size = UDim2.new(1, 0, 0.9, 0)
         Tabs.Position = UDim2.new(0, 0, 0.1, 0)
@@ -52,7 +53,7 @@ local function CreateGUI()
                 Section.Size = UDim2.new(1, 0, 1, 0)
                 Section.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
                 Section.Parent = Tab
-                
+
                 local Title = Instance.new("TextLabel")
                 Title.Size = UDim2.new(1, 0, 0.1, 0)
                 Title.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
@@ -80,6 +81,67 @@ local function CreateGUI()
 
                     Toggle.Text = (ToggleValue and "✓ " or "✗ ") .. (toggleConfig.Name or "Toggle")
                 end
+
+                function Library:AddSlider(sliderConfig)
+                    local Slider = Instance.new("Frame")
+                    Slider.Size = UDim2.new(1, 0, 0.1, 0)
+                    Slider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+                    Slider.Parent = Section
+
+                    local Title = Instance.new("TextLabel")
+                    Title.Size = UDim2.new(0.6, 0, 1, 0)
+                    Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+                    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    Title.Text = sliderConfig.Name or "Slider"
+                    Title.Parent = Slider
+
+                    local SliderBar = Instance.new("Frame")
+                    SliderBar.Size = UDim2.new(0.8, 0, 0.5, 0)
+                    SliderBar.Position = UDim2.new(0.2, 0, 0.5, 0)
+                    SliderBar.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+                    SliderBar.Parent = Slider
+
+                    local Handle = Instance.new("Frame")
+                    Handle.Size = UDim2.new(0.05, 0, 1, 0)
+                    Handle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                    Handle.Parent = SliderBar
+
+                    local SliderValue = Instance.new("TextLabel")
+                    SliderValue.Size = UDim2.new(0.4, 0, 0.5, 0)
+                    SliderValue.Position = UDim2.new(0.6, 0, 0.5, 0)
+                    SliderValue.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+                    SliderValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    SliderValue.Text = tostring(sliderConfig.Value or 0)
+                    SliderValue.Parent = Slider
+
+                    local dragging = false
+                    local minValue = sliderConfig.Min or 0
+                    local maxValue = sliderConfig.Max or 100
+
+                    Handle.MouseButton1Down:Connect(function()
+                        dragging = true
+                    end)
+
+                    UserInputService.InputEnded:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                            dragging = false
+                        end
+                    end)
+
+                    UserInputService.InputChanged:Connect(function(input)
+                        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                            local mouseX = input.Position.X
+                            local sliderStart = SliderBar.AbsolutePosition.X
+                            local sliderWidth = SliderBar.AbsoluteSize.X
+                            local newValue = math.clamp(((mouseX - sliderStart) / sliderWidth), 0, 1) * (maxValue - minValue) + minValue
+                            Handle.Position = UDim2.new(newValue / (maxValue - minValue), 0, 0, 0)
+                            SliderValue.Text = tostring(math.floor(newValue))
+                            if sliderConfig.Callback then
+                                sliderConfig.Callback(newValue)
+                            end
+                        end
+                    end)
+                end
             end
         end
 
@@ -88,13 +150,14 @@ local function CreateGUI()
 
     return Library
 end
+
 -- Initialize
-local getgenv, game = getgenv, game
+local getgenv = getgenv
 if getgenv().Aimbot then return end
 getgenv().Aimbot = { Settings = {}, FOVSettings = {}, Functions = {} }
 
 local Aimbot = getgenv().Aimbot
-local Camera = game:GetService("Workspace").CurrentCamera
+local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
@@ -147,11 +210,13 @@ Values:AddToggle({
     end
 })
 
-Values:AddToggle({
-    Name = "Toggle",
-    Value = Aimbot.Settings.Toggle,
+Values:AddSlider({
+    Name = "Sensitivity",
+    Value = Aimbot.Settings.Sensitivity,
+    Min = 0.1,
+    Max = 10,
     Callback = function(New)
-        Aimbot.Settings.Toggle = New
+        Aimbot.Settings.Sensitivity = New
     end
 })
 
@@ -164,18 +229,10 @@ Values:AddToggle({
 })
 
 Values:AddToggle({
-    Name = "Hotkey",
-    Value = Aimbot.Settings.TriggerKey,
+    Name = "Trigger Key",
+    Value = Aimbot.Settings.TriggerKey.Name,
     Callback = function(New)
-        Aimbot.Settings.TriggerKey = New
-    end
-})
-
-Values:AddToggle({
-    Name = "Sensitivity",
-    Value = Aimbot.Settings.Sensitivity,
-    Callback = function(New)
-        Aimbot.Settings.Sensitivity = New
+        Aimbot.Settings.TriggerKey = Enum.KeyCode[New]
     end
 })
 
@@ -213,9 +270,11 @@ ThirdPerson:AddToggle({
     end
 })
 
-ThirdPerson:AddToggle({
-    Name = "Sensitivity",
+ThirdPerson:AddSlider({
+    Name = "Third Person Sensitivity",
     Value = Aimbot.Settings.ThirdPersonSensitivity,
+    Min = 0.1,
+    Max = 10,
     Callback = function(New)
         Aimbot.Settings.ThirdPersonSensitivity = New
     end
@@ -231,34 +290,32 @@ local function GetClosestPlayer()
             if Aimbot.Settings.WallCheck and #Camera:GetPartsObscuringTarget({player.Character[Aimbot.Settings.LockPart].Position}, player.Character:GetDescendants()) > 0 then continue end
 
             local screenPoint = Camera:WorldToViewportPoint(player.Character[Aimbot.Settings.LockPart].Position)
-            --// User Input Handling
-
--- Begin tracking input
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed then
-        -- Check if the input is the trigger key
-        if input.KeyCode == Enum.KeyCode[Aimbot.Settings.TriggerKey] or input.UserInputType == Enum.UserInputType[Aimbot.Settings.TriggerKey] then
-            if Aimbot.Settings.Toggle then
-                Aimbot.Running = not Aimbot.Running
-                if not Aimbot.Running then
-                    Aimbot.Locked = nil
-                    Aimbot.FOVCircle.Color = Color3.fromRGB(255, 255, 255) -- Reset FOV color
-                end
-            else
-                Aimbot.Running = true
+            local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - UserInputService:GetMouseLocation()).Magnitude
+            if distance < closestDistance and distance < Aimbot.FOVSettings.Amount then
+                closestDistance = distance
+                closestPlayer = player
             end
         end
     end
-end)
+    return closestPlayer
+end
 
--- Stop tracking input
-UserInputService.InputEnded:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode[Aimbot.Settings.TriggerKey] or input.UserInputType == Enum.UserInputType[Aimbot.Settings.TriggerKey] then
-        if not Aimbot.Settings.Toggle then
-            Aimbot.Running = false
-            Aimbot.Locked = nil
-            Aimbot.FOVCircle.Color = Color3.fromRGB(255, 255, 255) -- Reset FOV color
-        end
+local function AimbotFunction()
+    if not Aimbot.Settings.Enabled then return end
+    local player = GetClosestPlayer()
+    if player then
+        local targetPosition = Camera:WorldToViewportPoint(player.Character[Aimbot.Settings.LockPart].Position)
+        local mousePosition = UserInputService:GetMouseLocation()
+        local aimDirection = (Vector2.new(targetPosition.X, targetPosition.Y) - mousePosition).unit
+        local newMousePosition = mousePosition + (aimDirection * Aimbot.Settings.Sensitivity)
+        UserInputService:SetMouseLocation(Vector2.new(newMousePosition.X, newMousePosition.Y))
+    end
+end
+
+-- Smoothness and Aiming Adjustment
+RunService.RenderStepped:Connect(function()
+    if Aimbot.Settings.Toggle then
+        AimbotFunction()
     end
 end)
 
@@ -269,4 +326,20 @@ end)
 
 UserInputService.TextBoxFocusReleased:Connect(function()
     Aimbot.Typing = false
+end)
+
+-- GUI Management
+RunService.Heartbeat:Connect(function()
+    if Aimbot.FOVSettings.Visible then
+        -- Draw the FOV circle
+        local fovCircle = Instance.new("Frame")
+        fovCircle.Size = UDim2.new(0, Aimbot.FOVSettings.Amount * 2, 0, Aimbot.FOVSettings.Amount * 2)
+        fovCircle.Position = UDim2.new(0.5, -Aimbot.FOVSettings.Amount, 0.5, -Aimbot.FOVSettings.Amount)
+        fovCircle.BackgroundColor3 = Aimbot.FOVSettings.Color
+        fovCircle.BackgroundTransparency = Aimbot.FOVSettings.Transparency
+        fovCircle.BorderSizePixel = Aimbot.FOVSettings.Thickness
+        fovCircle.BorderColor3 = Aimbot.FOVSettings.Color
+        fovCircle.Visible = Aimbot.FOVSettings.Visible
+        fovCircle.Parent = UI
+    end
 end)
