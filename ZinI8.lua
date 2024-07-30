@@ -3,7 +3,7 @@ local function CreateGUI()
     local Library = {}
     local UI = Instance.new("ScreenGui", game.CoreGui)
     UI.Name = "CustomAimbotUI"
-
+    
     function Library:CreateWindow(config)
         local Window = Instance.new("Frame")
         Window.Size = UDim2.new(0.3, 0, 0.5, 0)
@@ -11,14 +11,14 @@ local function CreateGUI()
         Window.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         Window.BorderSizePixel = 0
         Window.Parent = UI
-
+        
         local Title = Instance.new("TextLabel")
         Title.Size = UDim2.new(1, 0, 0.1, 0)
         Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
         Title.TextColor3 = Color3.fromRGB(255, 255, 255)
         Title.Text = config.Name or "Window"
         Title.Parent = Window
-
+        
         local Tabs = Instance.new("Frame")
         Tabs.Size = UDim2.new(1, 0, 0.9, 0)
         Tabs.Position = UDim2.new(0, 0, 0.1, 0)
@@ -52,7 +52,7 @@ local function CreateGUI()
                 Section.Size = UDim2.new(1, 0, 1, 0)
                 Section.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
                 Section.Parent = Tab
-
+                
                 local Title = Instance.new("TextLabel")
                 Title.Size = UDim2.new(1, 0, 0.1, 0)
                 Title.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
@@ -81,8 +81,6 @@ local function CreateGUI()
                     Toggle.Text = (ToggleValue and "✓ " or "✗ ") .. (toggleConfig.Name or "Toggle")
                 end
             end
-
-            return Tab
         end
 
         return Library
@@ -90,7 +88,6 @@ local function CreateGUI()
 
     return Library
 end
-
 -- Initialize
 local getgenv, game = getgenv, game
 if getgenv().Aimbot then return end
@@ -108,7 +105,7 @@ Aimbot.Settings = {
     Enabled = true,
     Toggle = false,
     LockPart = "Head",
-    TriggerKey = Enum.KeyCode.MouseButton2,
+    TriggerKey = Enum.UserInputType.MouseButton2,
     Sensitivity = 0.5,
     TeamCheck = false,
     WallCheck = true,
@@ -235,7 +232,6 @@ local function GetClosestPlayer()
 
             local screenPoint = Camera:WorldToViewportPoint(player.Character[Aimbot.Settings.LockPart].Position)
             local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - UserInputService:GetMouseLocation()).Magnitude
-
             if distance < closestDistance and distance < Aimbot.FOVSettings.Amount then
                 closestPlayer = player
                 closestDistance = distance
@@ -245,17 +241,19 @@ local function GetClosestPlayer()
     return closestPlayer
 end
 
-local function AimAt(player)
-    if player and player.Character and player.Character:FindFirstChild(Aimbot.Settings.LockPart) then
-        local part = player.Character[Aimbot.Settings.LockPart]
-        local partPos = part.Position
-                local screenPos = Camera:WorldToViewportPoint(part.Position)
-        mousemoverel((screenPos.X - UserInputService:GetMouseLocation().X) * Aimbot.Settings.Sensitivity, (screenPos.Y - UserInputService:GetMouseLocation().Y) * Aimbot.Settings.Sensitivity)
+local function AimAt(target)
+    if target and target.Character and target.Character:FindFirstChild(Aimbot.Settings.LockPart    ) then
+        local part = target.Character[Aimbot.Settings.LockPart]
+        local screenPos = Camera:WorldToViewportPoint(part.Position)
+        local mouseLocation = UserInputService:GetMouseLocation()
+        local moveX = (screenPos.X - mouseLocation.X) * Aimbot.Settings.Sensitivity
+        local moveY = (screenPos.Y - mouseLocation.Y) * Aimbot.Settings.Sensitivity
+        mousemoverel(moveX, moveY)
     end
 end
 
 RunService.RenderStepped:Connect(function()
-    if Aimbot.Settings.Enabled and (Aimbot.Settings.Toggle or UserInputService:IsKeyDown(Aimbot.Settings.TriggerKey)) then
+    if Aimbot.Settings.Enabled and (Aimbot.Settings.Toggle or UserInputService:IsMouseButtonPressed(Aimbot.Settings.TriggerKey)) then
         local target = GetClosestPlayer()
         if target then
             AimAt(target)
@@ -276,7 +274,7 @@ FOVCircle.Visible = Aimbot.FOVSettings.Visible
 RunService.RenderStepped:Connect(function()
     if Aimbot.Settings.Enabled then
         local mousePos = UserInputService:GetMouseLocation()
-        FOVCircle.Position = Vector2.new(mousePos.X, mousePos.Y + 36) -- Adjust for better alignment
+        FOVCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
         FOVCircle.Visible = Aimbot.FOVSettings.Visible
         FOVCircle.Radius = Aimbot.FOVSettings.Amount
         FOVCircle.Color = Aimbot.FOVSettings.Color
@@ -290,13 +288,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed then
         if input.KeyCode == Aimbot.Settings.TriggerKey or input.UserInputType == Aimbot.Settings.TriggerKey then
             if Aimbot.Settings.Toggle then
-                Aimbot.Running = not Aimbot.Running
-                if not Aimbot.Running then
+                Aimbot.Settings.Enabled = not Aimbot.Settings.Enabled
+                if not Aimbot.Settings.Enabled then
                     Aimbot.Locked = nil
                     FOVCircle.Color = Aimbot.FOVSettings.Color -- Reset FOV color
                 end
             else
-                Aimbot.Running = true
+                Aimbot.Settings.Enabled = true
             end
         end
     end
@@ -305,7 +303,7 @@ end)
 UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == Aimbot.Settings.TriggerKey or input.UserInputType == Aimbot.Settings.TriggerKey then
         if not Aimbot.Settings.Toggle then
-            Aimbot.Running = false
+            Aimbot.Settings.Enabled = false
             Aimbot.Locked = nil
             FOVCircle.Color = Aimbot.FOVSettings.Color -- Reset FOV color
         end
