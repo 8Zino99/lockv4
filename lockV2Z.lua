@@ -17,7 +17,6 @@ local Aimbot = {
     LockPart = "Head",
     LockedTarget = nil,
     Smoothness = 0.1,
-    TeleportShots = true, -- Enable teleport shots for precision
     HitboxSize = 10, -- Size of the hitbox to increase accuracy
 }
 
@@ -27,7 +26,7 @@ local function GetDistanceFromCursor(pos)
     return (Vector2.new(pos.X, pos.Y) - centerPos).Magnitude
 end
 
-local function GetClosestTarget()
+local function GetClosestTargetInSilentZone()
     local closestTarget, closestDist = nil, Aimbot.FOVRadius
 
     for _, player in pairs(Players:GetPlayers()) do
@@ -37,7 +36,8 @@ local function GetClosestTarget()
 
             if onScreen then
                 local dist = GetDistanceFromCursor(screenPos)
-                if dist < closestDist then
+                if dist <= Aimbot.FOVRadius then
+                    -- Target is within the Silent Zone
                     closestDist = dist
                     closestTarget = player
                 end
@@ -68,20 +68,6 @@ local function AimAt(target)
         local tween = TweenService:Create(Camera, tweenInfo, { CFrame = targetCFrame })
         tween:Play()
     else
-        Camera.CFrame = targetCFrame
-    end
-end
-
-local function TeleportShot(target)
-    if not target or not target.Character then return end
-
-    local targetPosition = PredictTargetPosition(target)
-    local ray = Ray.new(Camera.CFrame.Position, (targetPosition - Camera.CFrame.Position).Unit * 1000)
-
-    local part, position = workspace:FindPartOnRay(ray, LocalPlayer.Character)
-    if part and part.Parent == target.Character then
-        -- Simulate hit by moving camera to target
-        local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
         Camera.CFrame = targetCFrame
     end
 end
@@ -187,6 +173,16 @@ local function CreateGUI()
 end
 
 CreateGUI()
+
+-- Main Loop
+RunService.RenderStepped:Connect(function()
+    if Aimbot.Enabled then
+        local target = GetClosestTargetInSilentZone()
+        if target then
+            AimAt(target)
+        end
+    end
+end)
 
 -- Ensure GUI persists on respawn
 LocalPlayer.CharacterAdded:Connect(function(character)
